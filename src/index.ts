@@ -74,42 +74,25 @@ const availableExtensionsManager: JupyterFrontEndPlugin<void> = {
     nbgraderMenu.id = 'jp-mainmenu-nbgrader';
     nbgraderMenu.title.label = 'Nbgrader';
 
-    if (mainExtensions || labShell) {
-      nbgraderMenu.addItem({ command: commandIDs.openAssignmentsList });
-      nbgraderMenu.addItem({ command: commandIDs.openCoursesList });
-      nbgraderMenu.addItem({ command: commandIDs.openFormgrader });
-      nbgraderMenu.addItem({ command: commandIDs.openFormgraderLocal });
+    const hasCmd = (command: string) => app.commands.hasCommand(command);
 
-      if (palette) {
-        palette.addItem({
-          command: commandIDs.openAssignmentsList,
-          category: 'nbgrader'
-        });
-        palette.addItem({
-          command: commandIDs.openCoursesList,
-          category: 'nbgrader'
-        });
-        palette.addItem({
-          command: commandIDs.openFormgrader,
-          category: 'nbgrader'
-        });
-        palette.addItem({
-          command: commandIDs.openFormgraderLocal,
-          category: 'nbgrader'
-        });
+    const addCommand = (command: string) => {
+      nbgraderMenu.addItem({ command: command });
+      if (palette) palette.addItem({ command: command, category: 'nbgrader' });
+    };
+
+    app.restored.then(() => {
+      if (mainExtensions || labShell) {
+        if (hasCmd(commandIDs.openAssignmentsList)) addCommand(commandIDs.openAssignmentsList);
+        if (hasCmd(commandIDs.openCoursesList)) addCommand(commandIDs.openCoursesList);
+        if (hasCmd(commandIDs.openFormgrader)) addCommand(commandIDs.openFormgrader);
+        if (hasCmd(commandIDs.openFormgraderLocal)) addCommand(commandIDs.openFormgraderLocal);
       }
-    }
 
-    if (createExtension || labShell) {
-      nbgraderMenu.addItem({ command: commandIDs.openCreateAssignment });
-
-      if (palette) {
-        palette.addItem({
-          command: commandIDs.openCreateAssignment,
-          category: 'nbgrader'
-        });
+      if (createExtension || labShell) {
+        if (hasCmd(commandIDs.openCreateAssignment)) addCommand(commandIDs.openCreateAssignment);
       }
-    }
+    });
 
     mainMenu.addMenu(nbgraderMenu);
   }

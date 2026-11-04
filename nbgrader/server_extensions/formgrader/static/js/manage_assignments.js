@@ -30,6 +30,7 @@ var AssignmentUI = Backbone.View.extend({
         this.$name = this.$el.find(".name");
         this.$duedate = this.$el.find(".duedate");
         this.$status = this.$el.find(".status");
+        this.$counted = this.$el.find(".counted");
         this.$edit = this.$el.find(".edit");
         this.$assign = this.$el.find(".assign");
         this.$preview = this.$el.find(".preview");
@@ -100,6 +101,7 @@ var AssignmentUI = Backbone.View.extend({
         this.$name.empty();
         this.$duedate.empty();
         this.$status.empty();
+        this.$counted.empty();
         this.$edit.empty();
         this.$assign.empty();
         this.$preview.empty();
@@ -141,6 +143,19 @@ var AssignmentUI = Backbone.View.extend({
             this.$status.attr("data-order", "released");
             this.$status.append($("<span/>").addClass("label label-success").text("released"));
         }
+
+        // counted in student results
+        var counted_checkbox = $("<input/>")
+            .attr("type", "checkbox")
+            .addClass("counted-checkbox")
+            .attr("aria-label", "Count assignment '" + name + "' in student results")
+            .prop("checked", Boolean(this.model.get("counted")));
+        if (!this.model.get("releaseable")) {
+            counted_checkbox.prop("disabled", true);
+        } else {
+            counted_checkbox.on("change", _.bind(this.toggle_counted, this));
+        }
+        this.$counted.append(counted_checkbox);
 
         // edit metadata
         this.$edit.append($("<a/>")
@@ -248,6 +263,31 @@ var AssignmentUI = Backbone.View.extend({
             );
         }
 
+    },
+
+    toggle_counted: function (event) {
+        var checkbox = $(event.currentTarget);
+        var counted = checkbox.is(":checked");
+        var name = this.model.get("name");
+        checkbox.prop("disabled", true);
+        $.ajax({
+            url: base_url + "/formgrader/api/assignment/" + encodeURIComponent(name) + "/counted",
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({"counted": counted}),
+            dataType: "json"
+        }).done(_.bind(function () {
+            this.model.set("counted", counted, {silent: true});
+            checkbox.prop("disabled", false);
+        }, this)).fail(_.bind(function () {
+            checkbox.prop("checked", !counted);
+            checkbox.prop("disabled", false);
+            createModal(
+                "error-modal",
+                "Error",
+                "There was an error updating the counted setting of '" + name + "'."
+            );
+        }, this));
     },
 
     assign: function () {
@@ -500,6 +540,7 @@ var insertRow = function (table) {
     row.append($("<td/>").addClass("name"));
     row.append($("<td/>").addClass("text-center duedate"));
     row.append($("<td/>").addClass("text-center status"));
+    row.append($("<td/>").addClass("text-center counted"));
     row.append($("<td/>").addClass("text-center edit"));
     row.append($("<td/>").addClass("text-center assign"));
     row.append($("<td/>").addClass("text-center preview"));

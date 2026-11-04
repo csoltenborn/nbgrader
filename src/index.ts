@@ -11,6 +11,7 @@ import { INotebookTree } from "@jupyter-notebook/tree";
 import { Menu, Panel } from '@lumino/widgets';
 
 import { AssignmentListWidget } from "./assignment_list/index";
+import { ResultsWidget } from "./results/index";
 import { FormgraderWidget } from "./formgrader/index";
 import { CourseListWidget } from "./course_list/index";
 import { CreateAssignmentWidget } from "./create_assignment/index";
@@ -22,6 +23,7 @@ import { ButtonExtension } from "./validate_assignment/index";
 const pluginIDs = {
   menus: '@jupyter/nbgrader:menu',
   assignmentsList: '@jupyter/nbgrader:assignment-list',
+  results: '@jupyter/nbgrader:results',
   coursesList: '@jupyter/nbgrader:course-list',
   formgrader: '@jupyter/nbgrader:formgrader',
   createAssignment: '@jupyter/nbgrader:create-assignment',
@@ -33,6 +35,7 @@ const pluginIDs = {
  */
 export const commandIDs = {
   openAssignmentsList: 'nbgrader:open-assignment-list',
+  openResults: 'nbgrader:open-results',
   openCoursesList: 'nbgrader:open-course-list',
   openFormgrader: 'nbgrader:open-formgrader',
   openFormgraderLocal: 'nbgrader:open-formgrader-local',
@@ -84,6 +87,7 @@ const availableExtensionsManager: JupyterFrontEndPlugin<void> = {
     app.restored.then(() => {
       if (mainExtensions || labShell) {
         if (hasCmd(commandIDs.openAssignmentsList)) addCommand(commandIDs.openAssignmentsList);
+        if (hasCmd(commandIDs.openResults)) addCommand(commandIDs.openResults);
         if (hasCmd(commandIDs.openCoursesList)) addCommand(commandIDs.openCoursesList);
         if (hasCmd(commandIDs.openFormgrader)) addCommand(commandIDs.openFormgrader);
         if (hasCmd(commandIDs.openFormgraderLocal)) addCommand(commandIDs.openFormgraderLocal);
@@ -159,6 +163,66 @@ const assignmentListExtension: JupyterFrontEndPlugin<void> = {
     }
 
     console.debug('JupyterLab extension assignment-list is activated!');
+  }
+};
+
+/**
+ * Student results plugin.
+ */
+const resultsExtension: JupyterFrontEndPlugin<void> = {
+  id: pluginIDs.results,
+  autoStart: true,
+  optional: [ILayoutRestorer, INotebookTree],
+  activate: (
+    app: JupyterFrontEnd,
+    restorer: ILayoutRestorer | null,
+    notebookTree: INotebookTree | null
+  ) => {
+    let widget: MainAreaWidget<ResultsWidget>;
+
+    const tracker = new WidgetTracker<MainAreaWidget<ResultsWidget>>({
+      namespace: 'nbgrader-results'
+    });
+
+    app.commands.addCommand(commandIDs.openResults, {
+      label: 'Results',
+      execute: () => {
+        const isNew = !widget || widget.isDisposed;
+        if (isNew) {
+          const content = new ResultsWidget();
+          widget = new MainAreaWidget({ content });
+          widget.id = 'nbgrader-results';
+          widget.addClass('nbgrader-mainarea-widget');
+          widget.title.label = 'Results';
+          widget.title.closable = true;
+        }
+        if (!tracker.has(widget)) {
+          tracker.add(widget);
+        }
+
+        if (!widget.isAttached) {
+          if (notebookTree) {
+            notebookTree.addWidget(widget);
+            notebookTree.currentWidget = widget;
+          } else {
+            app.shell.add(widget, 'main');
+          }
+        } else {
+          widget.content.update();
+        }
+
+        app.shell.activateById(widget.id);
+      }
+    });
+
+    if (restorer != null) {
+      restorer.restore(tracker, {
+        command: commandIDs.openResults,
+        name: () => 'nbgrader-results'
+      });
+    }
+
+    console.debug('JupyterLab extension results is activated!');
   }
 };
 
@@ -408,6 +472,7 @@ export default [
   availableExtensionsManager,
   formgraderExtension,
   assignmentListExtension,
+  resultsExtension,
   courseListExtension,
   createAssignmentExtension,
   validateAssignmentExtension

@@ -178,6 +178,48 @@ class NbGraderAPI(LoggingConfigurable):
 
         return released
 
+    def _effective_course_id(self):
+        if self.course_id and self.course_id != '*':
+            return self.course_id
+        return os.environ.get('NBGRADER_SELECTED_COURSE', '').strip()
+
+    def get_counted_assignments(self):
+        """Get the names of assignments marked as counted toward point evaluation."""
+        course_id = self._effective_course_id()
+        if not self.exchange_is_functional or not course_id:
+            return set([])
+
+        lister = self.exchange.List(
+            coursedir=self.coursedir,
+            authenticator=self.authenticator,
+            parent=self)
+        if not hasattr(lister, "get_counted_assignments"):
+            return set([])
+
+        counted = lister.get_counted_assignments(course_id)
+        if counted is None:
+            return set([])
+        return set(counted)
+
+    def set_assignment_counted(self, assignment_id, counted):
+        """Mark or unmark an assignment as counted toward point evaluation."""
+        course_id = self._effective_course_id()
+        if not self.exchange_is_functional or not course_id:
+            return {"success": False, "error": "Exchange is not functional."}
+
+        lister = self.exchange.List(
+            coursedir=self.coursedir,
+            authenticator=self.authenticator,
+            parent=self)
+        if not hasattr(lister, "set_assignment_counted"):
+            return {
+                "success": False,
+                "error": "Exchange does not support counted assignments."
+            }
+
+        ok = lister.set_assignment_counted(course_id, assignment_id, bool(counted))
+        return {"success": bool(ok), "counted": bool(counted)}
+
     def get_submitted_students(self, assignment_id):
         """Get the ids of students that have submitted a given assignment
         (determined by whether or not a submission exists in the `submitted`
@@ -294,7 +336,7 @@ class NbGraderAPI(LoggingConfigurable):
 
         return students
 
-    def get_assignment(self, assignment_id, released=None):
+    def get_assignment(self, assignment_id, released=None, counted=None):
         """Get information about an assignment given its name.
 
         Arguments
@@ -304,6 +346,9 @@ class NbGraderAPI(LoggingConfigurable):
         released: list
             (Optional) A set of names of released assignments, obtained via
             self.get_released_assignments().
+        counted: set
+            (Optional) A set of names of counted assignments, obtained via
+            self.get_counted_assignments().
 
         Returns
         -------
@@ -314,6 +359,8 @@ class NbGraderAPI(LoggingConfigurable):
         # get the set of released assignments if not given
         if not released:
             released = self.get_released_assignments()
+        if counted is None:
+            counted = self.get_counted_assignments()
 
         # check whether there is a source version of the assignment
         sourcedir = os.path.abspath(self.coursedir.format_path(
@@ -385,6 +432,7 @@ class NbGraderAPI(LoggingConfigurable):
 
         # number of submissions
         assignment["num_submissions"] = len(self.get_submitted_students(assignment_id))
+        assignment["counted"] = assignment_id in counted
 
         return assignment
 
@@ -398,10 +446,11 @@ class NbGraderAPI(LoggingConfigurable):
 
         """
         released = self.get_released_assignments()
+        counted = self.get_counted_assignments()
 
         assignments = []
         for x in self.get_source_assignments():
-            assignments.append(self.get_assignment(x, released=released))
+            assignments.append(self.get_assignment(x, released=released, counted=counted))
 
         assignments.sort(key=lambda x: (x["duedate"] if x["duedate"] is not None else "None", x["name"]))
         return assignments

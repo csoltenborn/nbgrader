@@ -51,6 +51,7 @@ Manage Assignments
           <li><i>(JupyterHub only)</i> To <b>collect</b> assignments, click the collect button.</li>
           <li>To <b>autograde</b> submissions, click on the number of collected submissions. You must run
           the autograder on the submissions before you can manually grade them.</li>
+          <li>To include an assignment in the students' <b>Results</b> point evaluation, check its <b>Bonus eligible</b> checkbox.</li>
         </ol>
       </div>
     </div>
@@ -100,6 +101,7 @@ for instructions.
   <th>Name</th>
   <th class="text-center">Due Date</th>
   <th class="text-center">Status</th>
+  <th class="text-center no-sort">Bonus eligible</th>
   <th class="text-center no-sort">Edit</th>
   <th class="text-center no-sort">Generate</th>
   <th class="text-center no-sort">Preview</th>
@@ -112,12 +114,12 @@ for instructions.
 {%- endblock -%}
 
 {%- block table_body -%}
-<tr><td colspan="11">Loading, please wait...</td></tr>
+<tr><td colspan="12">Loading, please wait...</td></tr>
 {%- endblock -%}
 
 {%- block table_footer -%}
 <tr>
-  <td colspan="11">
+  <td colspan="12">
     <span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
     <a href="#" onClick="createAssignmentModal();">Add new assignment...</a>
   </td>

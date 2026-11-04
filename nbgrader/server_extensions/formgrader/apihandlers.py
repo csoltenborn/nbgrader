@@ -311,11 +311,25 @@ class ReleaseFeedbackHandler(BaseApiHandler):
         self.write(json.dumps(self.api.release_feedback(assignment_id, student_id)))
 
 
+class CountedAssignmentHandler(BaseApiHandler):
+    @web.authenticated
+    @check_xsrf
+    @check_notebook_dir
+    def post(self, assignment_id):
+        data = self.get_json_body() or {}
+        counted = bool(data.get("counted", False))
+        result = self.api.set_assignment_counted(assignment_id, counted)
+        if not result.get("success"):
+            raise web.HTTPError(500, result.get("error", "Failed to update counted state"))
+        self.write(json.dumps(result))
+
+
 default_handlers = [
     (r"/formgrader/api/status", StatusHandler),
 
     (r"/formgrader/api/assignments", AssignmentCollectionHandler),
     (r"/formgrader/api/assignment/([^/]+)", AssignmentHandler),
+    (r"/formgrader/api/assignment/([^/]+)/counted", CountedAssignmentHandler),
     (r"/formgrader/api/assignment/([^/]+)/assign", AssignHandler),
     (r"/formgrader/api/assignment/([^/]+)/unrelease", UnReleaseHandler),
     (r"/formgrader/api/assignment/([^/]+)/release", ReleaseHandler),

@@ -88,7 +88,6 @@ const availableExtensionsManager: JupyterFrontEndPlugin<void> = {
       if (mainExtensions || labShell) {
         if (hasCmd(commandIDs.openAssignmentsList)) addCommand(commandIDs.openAssignmentsList);
         if (hasCmd(commandIDs.openResults)) addCommand(commandIDs.openResults);
-        if (hasCmd(commandIDs.openCoursesList)) addCommand(commandIDs.openCoursesList);
         if (hasCmd(commandIDs.openFormgrader)) addCommand(commandIDs.openFormgrader);
         if (hasCmd(commandIDs.openFormgraderLocal)) addCommand(commandIDs.openFormgraderLocal);
       }
@@ -126,22 +125,22 @@ const assignmentListExtension: JupyterFrontEndPlugin<void> = {
     app.commands.addCommand(commandIDs.openAssignmentsList, {
       label: 'Assignment List',
       execute: () => {
-        if(!widget || widget.isDisposed){
+        if (!widget || widget.isDisposed) {
           const content = new AssignmentListWidget(app);
-          widget = new MainAreaWidget({content});
+          widget = new MainAreaWidget({ content });
           widget.id = 'nbgrader-assignment-list';
           widget.addClass('nbgrader-mainarea-widget');
           widget.title.label = 'Assignments';
           widget.title.closable = true;
         }
-        if(!tracker.has(widget)){
+        if (!tracker.has(widget)) {
           // Track the state of the widget for later restoration
           tracker.add(widget);
         }
 
         // Attach the widget to the main area if it's not there
-        if(!widget.isAttached){
-          if (notebookTree){
+        if (!widget.isAttached) {
+          if (notebookTree) {
             notebookTree.addWidget(widget);
             notebookTree.currentWidget = widget;
           }
@@ -251,7 +250,7 @@ const courseListExtension: JupyterFrontEndPlugin<void> = {
       execute: () => {
         if (!widget || widget.isDisposed) {
           const content = new CourseListWidget(app, notebookTree !== null);
-          widget = new MainAreaWidget({content});
+          widget = new MainAreaWidget({ content });
           widget.id = 'nbgrader-course-list';
           widget.addClass('nbgrader-mainarea-widget');
           widget.title.label = 'Courses';
@@ -262,8 +261,8 @@ const courseListExtension: JupyterFrontEndPlugin<void> = {
         }
 
         // Attach the widget to the main area if it's not there
-        if(!widget.isAttached){
-          if (notebookTree){
+        if (!widget.isAttached) {
+          if (notebookTree) {
             notebookTree.addWidget(widget);
             notebookTree.currentWidget = widget;
           }
@@ -277,7 +276,7 @@ const courseListExtension: JupyterFrontEndPlugin<void> = {
     })
 
     // Restore the widget state
-    if (restorer != null){
+    if (restorer != null) {
       restorer.restore(tracker, {
         command: commandIDs.openCoursesList,
         name: () => 'nbgrader-course-list'
@@ -323,7 +322,7 @@ const formgraderExtension: JupyterFrontEndPlugin<void> = {
       if (!widget || widget.isDisposed) {
         const content = new FormgraderWidget(app, url);
 
-        widget = new MainAreaWidget({content});
+        widget = new MainAreaWidget({ content });
         widget.id = 'formgrader';
         widget.title.label = 'Formgrader';
         widget.title.closable = true;
@@ -335,8 +334,8 @@ const formgraderExtension: JupyterFrontEndPlugin<void> = {
       }
 
       // Attach the widget to the main area if it's not there
-      if (notebookTree){
-        if (!widget.isAttached){
+      if (notebookTree) {
+        if (!widget.isAttached) {
           notebookTree.addWidget(widget);
         }
         notebookTree.currentWidget = widget;
@@ -408,7 +407,7 @@ const formgraderExtension: JupyterFrontEndPlugin<void> = {
     }
 
     // Restore the widget state
-    if (restorer != null){
+    if (restorer != null) {
       restorer.restore(tracker, {
         command: commandIDs.openFormgrader,
         name: () => 'nbgrader-formgrader'
@@ -442,15 +441,24 @@ const createAssignmentExtension: JupyterFrontEndPlugin<void> = {
     app.shell.add(panel, 'right');
 
     app.commands.addCommand(commandIDs.openCreateAssignment, {
-      label: 'Create assignment',
+      label: 'Edit Assignment Cells',
       isEnabled: () => {
         return createAssignmentWidget.isAvailable();
       },
       execute: () => {
         app.shell.activateById(panel.id);
       }
-    })
-    console.debug('Extension "create_assignment" activated.');
+  });
+
+tracker.currentChanged.connect(() => {
+  app.commands.notifyCommandChanged(commandIDs.openCreateAssignment);
+});
+if (labShell) {
+  labShell.currentChanged.connect(() => {
+    app.commands.notifyCommandChanged(commandIDs.openCreateAssignment);
+  });
+}
+console.debug('Extension "create_assignment" activated.');
   }
 };
 

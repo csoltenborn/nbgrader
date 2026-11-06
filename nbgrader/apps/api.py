@@ -220,6 +220,38 @@ class NbGraderAPI(LoggingConfigurable):
         ok = lister.set_assignment_counted(course_id, assignment_id, bool(counted))
         return {"success": bool(ok), "counted": bool(counted)}
 
+    def get_course_results(self):
+        """Get the course-wide bonus results overview."""
+        course_id = self._effective_course_id()
+        if not self.exchange_is_functional or not course_id:
+            return {"success": False, "error": "Exchange is not functional."}
+        lister = self.exchange.List(
+            coursedir=self.coursedir,
+            authenticator=self.authenticator,
+            parent=self)
+        if not hasattr(lister, "get_course_results"):
+            return {
+                "success": False,
+                "error": "Exchange does not support course results."
+            }
+        response = lister.get_course_results(course_id)
+        if response is None or not response.get("success", False):
+            msg = (
+                response.get("message")
+                if isinstance(response, dict) and response.get("message")
+                else f"Failed to load course results for '{course_id}'."
+            )
+            return {"success": False, "error": msg}
+        return {
+            "success": True,
+            "value": {
+                "course_id": response.get("course_id", course_id),
+                "counted_assignments": response.get("counted_assignments", []),
+                "total_max_points": response.get("total_max_points", 0.0),
+                "students": response.get("students", []),
+            }
+        }
+
     def get_submitted_students(self, assignment_id):
         """Get the ids of students that have submitted a given assignment
         (determined by whether or not a submission exists in the `submitted`
@@ -357,7 +389,7 @@ class NbGraderAPI(LoggingConfigurable):
 
         """
         # get the set of released assignments if not given
-        if not released:
+        if released is None:
             released = self.get_released_assignments()
         if counted is None:
             counted = self.get_counted_assignments()

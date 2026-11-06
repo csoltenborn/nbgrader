@@ -8,7 +8,7 @@ import { ISettingRegistry } from "@jupyterlab/settingregistry";
 import { ServerConnection } from "@jupyterlab/services";
 import { INotebookShell } from "@jupyter-notebook/application";
 import { INotebookTree } from "@jupyter-notebook/tree";
-import { Menu, Panel } from '@lumino/widgets';
+import { Menu, Panel, Widget } from '@lumino/widgets';
 
 import { AssignmentListWidget } from "./assignment_list/index";
 import { ResultsWidget } from "./results/index";
@@ -160,6 +160,50 @@ const assignmentListExtension: JupyterFrontEndPlugin<void> = {
         name: () => 'nbgrader-assignment-list'
       });
     }
+
+    const addCourseBadge = async () => {
+      try {
+        const settings = ServerConnection.makeSettings();
+        const requestUrl = URLExt.join(settings.baseUrl, 'nbgrader_context');
+        const response = await ServerConnection.makeRequest(requestUrl, {}, settings);
+        if (!response.ok) {
+          return;
+        }
+        const data = await response.json();
+        const courseId = data.course_id || 'None';
+        const rawRole = (data.role || 'student').toLowerCase();
+        const role = rawRole.charAt(0).toUpperCase() + rawRole.slice(1);
+
+        const badgeWidget = new Widget();
+        badgeWidget.id = 'nbgrader-course-badge';
+        badgeWidget.addClass('nbgrader-course-badge');
+        badgeWidget.node.style.display = 'flex';
+        badgeWidget.node.style.alignItems = 'center';
+        badgeWidget.node.style.padding = '0 10px';
+        badgeWidget.node.style.fontSize = 'var(--jp-ui-font-size1, 13px)';
+        badgeWidget.node.style.color = 'var(--jp-ui-font-color1)';
+
+        const badgeText = document.createElement('span');
+        badgeText.className = 'nbgrader-course-badge-text';
+        badgeText.innerText = `Course: ${courseId} (${role})`;
+        badgeText.style.marginRight = '8px';
+        badgeWidget.node.appendChild(badgeText);
+
+        const switchLink = document.createElement('a');
+        switchLink.href = '/hub/logout';
+        switchLink.className = 'nbgrader-switch-course-link';
+        switchLink.title = 'Log out and select another course';
+        switchLink.innerText = 'Switch Course';
+        switchLink.style.color = 'var(--jp-brand-color1, #1976d2)';
+        switchLink.style.textDecoration = 'underline';
+        badgeWidget.node.appendChild(switchLink);
+
+        app.shell.add(badgeWidget, 'top', { rank: 900 });
+      } catch (err) {
+        console.warn('Failed to load nbgrader context badge', err);
+      }
+    };
+    addCourseBadge();
 
     console.debug('JupyterLab extension assignment-list is activated!');
   }
@@ -434,7 +478,7 @@ const createAssignmentExtension: JupyterFrontEndPlugin<void> = {
     panel.node.style.overflowY = 'auto';
     const createAssignmentWidget = new CreateAssignmentWidget(tracker, labShell);
     panel.addWidget(createAssignmentWidget);
-    panel.id = 'nbgrader-create_assignemnt';
+    panel.id = 'nbgrader-create_assignment';
     panel.title.label = 'Create Assignment';
     panel.title.caption = 'Nbgrader Create Assignment';
 

@@ -8,6 +8,7 @@ export interface IAssignmentResult {
   points: number;
   max_points: number;
   graded: boolean;
+  submitted?: boolean;
 }
 
 export interface IStudentResultsPayload {
@@ -368,10 +369,16 @@ export class ResultsWidget extends Widget {
       const statusTd = document.createElement('td');
       statusTd.className = 'results-col-status results-assignment-status';
       const badge = document.createElement('span');
-      badge.className = item.graded
-        ? 'results-badge results-badge-graded'
-        : 'results-badge results-badge-ungraded';
-      badge.innerText = item.graded ? 'Graded' : 'Not graded';
+      if (item.graded) {
+        badge.className = 'results-badge results-badge-graded';
+        badge.innerText = 'Graded';
+      } else if (item.submitted) {
+        badge.className = 'results-badge results-badge-submitted results-status-submitted';
+        badge.innerText = 'Submitted (pending grading)';
+      } else {
+        badge.className = 'results-badge results-badge-ungraded results-status-ungraded';
+        badge.innerText = 'Not submitted';
+      }
       statusTd.appendChild(badge);
 
       const ptsTd = document.createElement('td');

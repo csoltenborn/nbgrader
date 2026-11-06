@@ -17,6 +17,7 @@ Manage Assignments
 <li role="presentation" class="active"><a href="{{ base_url }}/formgrader/manage_assignments">Manage Assignments</a></li>
 <li role="presentation"><a href="{{ base_url }}/formgrader/gradebook">Manual Grading</a></li>
 <li role="presentation"><a href="{{ base_url }}/formgrader/manage_students">Manage Students</a></li>
+<li role="presentation"><a href="{{ base_url }}/formgrader/bonus_results">Bonus Results</a></li>
 {%- endblock -%}
 
 {%- block breadcrumbs -%}
@@ -108,18 +109,19 @@ for instructions.
   <th class="text-center no-sort">Release</th>
   <th class="text-center no-sort">Collect</th>
   <th class="text-center"># Submissions</th>
+  <th class="text-center no-sort">Autograde</th>
   <th class="text-center no-sort">Generate Feedback</th>
   <th class="text-center no-sort">Release Feedback</th>
 </tr>
 {%- endblock -%}
 
 {%- block table_body -%}
-<tr><td colspan="12">Loading, please wait...</td></tr>
+<tr><td colspan="13">Loading, please wait...</td></tr>
 {%- endblock -%}
 
 {%- block table_footer -%}
 <tr>
-  <td colspan="12">
+  <td colspan="13">
     <span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
     <a href="#" onClick="createAssignmentModal();">Add new assignment...</a>
   </td>

@@ -1090,7 +1090,7 @@ class NbGraderAPI(LoggingConfigurable):
                 app.update = update
                 return capture_log(app)
 
-    def autograde(self, assignment_id, student_id, force=True, create=True):
+    def autograde(self, assignment_id, student_id=None, force=True, create=True):
         """Run ``nbgrader autograde`` for a particular assignment and student.
 
         Arguments
@@ -1098,7 +1098,8 @@ class NbGraderAPI(LoggingConfigurable):
         assignment_id: string
             The name of the assignment
         student_id: string
-            The unique id of the student
+            The unique id of the student (optional). If not provided, then
+            autograde all submitted assignments.
         force: bool
             Whether to autograde the submission, even if it's already been
             autograded
@@ -1116,11 +1117,18 @@ class NbGraderAPI(LoggingConfigurable):
             - log (string): captured log output
 
         """
-        with temp_attrs(self.coursedir, assignment_id=assignment_id, student_id=student_id):
-            app = Autograde(coursedir=self.coursedir, parent=self)
-            app.force = force
-            app.create_student = create
-            return capture_log(app)
+        if student_id is not None:
+            with temp_attrs(self.coursedir, assignment_id=assignment_id, student_id=student_id):
+                app = Autograde(coursedir=self.coursedir, parent=self)
+                app.force = force
+                app.create_student = create
+                return capture_log(app)
+        else:
+            with temp_attrs(self.coursedir, assignment_id=assignment_id):
+                app = Autograde(coursedir=self.coursedir, parent=self)
+                app.force = force
+                app.create_student = create
+                return capture_log(app)
 
     def generate_feedback(self, assignment_id, student_id=None, force=True):
         """Run ``nbgrader generate_feedback`` for a particular assignment and student.

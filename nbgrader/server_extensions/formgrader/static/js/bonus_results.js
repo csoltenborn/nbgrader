@@ -10,10 +10,12 @@ var loadBonusResults = function () {
     var tbl = $("#main-table");
     var headerRow = $("#bonus-results-header");
 
+    var xsrf = (typeof getCookie === "function") ? getCookie("_xsrf") : undefined;
     $.ajax({
         url: base_url + "/formgrader/api/bonus_results",
         type: "GET",
         dataType: "json",
+        headers: xsrf ? {"X-CSRFToken": xsrf} : {},
         success: function (data) {
             tbl.empty();
             if (!data.success) {

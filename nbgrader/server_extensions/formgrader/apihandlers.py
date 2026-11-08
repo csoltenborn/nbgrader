@@ -210,15 +210,34 @@ class StudentHandler(BaseApiHandler):
     @check_xsrf
     @check_notebook_dir
     def put(self, student_id):
-        data = self.get_json_body()
-        student = {
-            "last_name": data.get("last_name", None),
-            "first_name": data.get("first_name", None),
-            "email": data.get("email", None),
-        }
+        data = self.get_json_body() or {}
         student_id = student_id.strip()
-        self.gradebook.update_or_create_student(student_id, **student)
-        self.write(json.dumps(self.api.get_student(student_id)))
+        result = self.api.save_student(
+            student_id,
+            first_name=data.get("first_name", None),
+            last_name=data.get("last_name", None),
+            email=data.get("email", None)
+        )
+        if not result.get("success"):
+            raise web.HTTPError(
+                result.get("status_code", 400),
+                result.get("error", "Failed to save student")
+            )
+        self.write(json.dumps(result.get("student")))
+
+    @web.authenticated
+    @check_xsrf
+    @check_notebook_dir
+    def delete(self, student_id):
+        student_id = student_id.strip()
+        force = self.get_argument("force", "false").lower() == "true"
+        result = self.api.remove_student(student_id, force=force)
+        if not result.get("success"):
+            raise web.HTTPError(
+                result.get("status_code", 400),
+                result.get("error", "Failed to remove student")
+            )
+        self.write(json.dumps({"success": True}))
 
 
 class StudentSubmissionCollectionHandler(BaseApiHandler):

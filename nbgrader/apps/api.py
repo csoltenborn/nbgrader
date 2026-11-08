@@ -850,6 +850,32 @@ class NbGraderAPI(LoggingConfigurable):
 
         return student
 
+    def _sync_students_from_exchange(self):
+        """Synchronize remote course roster from exchange into local gradebook."""
+        course_id = self._effective_course_id()
+        if not self.exchange_is_functional or not course_id:
+            return
+        try:
+            lister = self.exchange.List(
+                coursedir=self.coursedir,
+                authenticator=self.authenticator,
+                parent=self)
+            if hasattr(lister, "get_students"):
+                ng_students = lister.get_students(course_id)
+                if ng_students is not None:
+                    with self.gradebook as gb:
+                        for s in ng_students:
+                            s_id = s.get("username") or s.get("id") or s.get("student_id")
+                            if s_id:
+                                gb.update_or_create_student(
+                                    s_id,
+                                    first_name=s.get("first_name") or None,
+                                    last_name=s.get("last_name") or None,
+                                    email=s.get("email") or None,
+                                )
+        except Exception:
+            self.log.exception("Failed to sync students from exchange")
+
     def get_students(self):
         """Get a list containing information about all the students in class.
 
@@ -859,6 +885,8 @@ class NbGraderAPI(LoggingConfigurable):
             A list of dictionaries containing information about all the students
 
         """
+        self._sync_students_from_exchange()
+
         with self.gradebook as gb:
             in_db = set([x.id for x in gb.students])
             students = gb.student_dicts()
@@ -877,6 +905,73 @@ class NbGraderAPI(LoggingConfigurable):
 
         students.sort(key=lambda x: (x["last_name"] or "None", x["first_name"] or "None", x["id"]))
         return students
+
+    def save_student(self, student_id, first_name=None, last_name=None, email=None):
+        """Add or update a student in exchange and gradebook."""
+        course_id = self._effective_course_id()
+        if self.exchange_is_functional and course_id:
+            lister = self.exchange.List(
+                coursedir=self.coursedir,
+                authenticator=self.authenticator,
+                parent=self)
+            if hasattr(lister, "add_or_update_student"):
+                res = lister.add_or_update_student(
+                    course_id,
+                    student_id,
+                    first_name=first_name,
+                    last_name=last_name,
+                    email=email
+                )
+                if res is None or not res.get("success", False):
+                    msg = (res or {}).get("message", "Failed to update student in ngshare")
+                    code = (res or {}).get("status_code", 400)
+                    return {"success": False, "error": msg, "status_code": code}
+
+        with self.gradebook as gb:
+            gb.update_or_create_student(
+                student_id,
+                first_name=first_name,
+                last_name=last_name,
+                email=email
+            )
+        return {"success": True, "student": self.get_student(student_id)}
+
+    def remove_student(self, student_id, force=False):
+        """Remove a student from exchange and gradebook."""
+        with self.gradebook as gb:
+            student = None
+            try:
+                student = gb.find_student(student_id)
+            except Exception:
+                pass
+            if student and len(student.submissions) > 0 and not force:
+                return {
+                    "success": False,
+                    "error": f"Student '{student_id}' has existing submissions and grades. Force confirmation required.",
+                    "status_code": 409,
+                    "has_submissions": True,
+                }
+
+        course_id = self._effective_course_id()
+        if self.exchange_is_functional and course_id:
+            lister = self.exchange.List(
+                coursedir=self.coursedir,
+                authenticator=self.authenticator,
+                parent=self)
+            if hasattr(lister, "remove_student"):
+                res = lister.remove_student(course_id, student_id)
+                if res is None or not res.get("success", False):
+                    msg = (res or {}).get("message", "Failed to remove student from ngshare")
+                    code = (res or {}).get("status_code", 400)
+                    return {"success": False, "error": msg, "status_code": code}
+
+        with self.gradebook as gb:
+            try:
+                gb.remove_student(student_id)
+            except Exception:
+                pass
+
+        return {"success": True}
 
     def get_student_submissions(self, student_id):
         """Get information about all submissions from a particular student.

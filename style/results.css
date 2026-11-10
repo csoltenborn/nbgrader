@@ -131,3 +131,19 @@
   color: var(--jp-warn-color0, #8a6d3b);
 }
 
+.results-bonus-table {
+  margin-top: 8px;
+}
+
+.results-bonus-row-active {
+  font-weight: bold;
+  background: var(--jp-brand-color3, #e3f2fd);
+}
+
+.results-bonus-note {
+  margin-top: 8px;
+  font-size: var(--jp-ui-font-size0, 11px);
+  color: var(--jp-ui-font-color2, #666);
+}
+
+

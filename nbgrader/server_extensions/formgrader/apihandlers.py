@@ -359,9 +359,25 @@ class BonusResultsCollectionHandler(BaseApiHandler):
         self.write(json.dumps(self.api.get_course_results()))
 
 
+class BonusSchemeHandler(BaseApiHandler):
+    @web.authenticated
+    @check_xsrf
+    @check_notebook_dir
+    def get(self):
+        self.write(json.dumps(self.api.get_bonus_scheme()))
+
+    @web.authenticated
+    @check_xsrf
+    @check_notebook_dir
+    def put(self):
+        data = self.get_json_body() or {}
+        self.write(json.dumps(self.api.set_bonus_scheme(data)))
+
+
 default_handlers = [
     (r"/formgrader/api/status", StatusHandler),
     (r"/formgrader/api/bonus_results", BonusResultsCollectionHandler),
+    (r"/formgrader/api/bonus_scheme", BonusSchemeHandler),
 
     (r"/formgrader/api/assignments", AssignmentCollectionHandler),
     (r"/formgrader/api/assignment/([^/]+)", AssignmentHandler),

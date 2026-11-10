@@ -9,7 +9,7 @@ export class FormgraderWidget extends IFrame {
     constructor(app: JupyterFrontEnd, url:string) {
       super();
       this.referrerPolicy = 'strict-origin-when-cross-origin';
-      this.sandbox = ['allow-scripts', 'allow-same-origin', 'allow-forms'];
+      this.sandbox = ['allow-scripts', 'allow-same-origin', 'allow-forms', 'allow-downloads'];
 
       this.node.id = "formgrader-iframe"
       this.app = app;

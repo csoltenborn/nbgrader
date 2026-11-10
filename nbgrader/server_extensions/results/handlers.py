@@ -146,6 +146,7 @@ class ResultsManager(LoggingConfigurable):
                         "total_points": response.get("total_points", 0.0),
                         "total_max_points": response.get("total_max_points", 0.0),
                         "percentage": response.get("percentage", 0.0),
+                        "bonus": response.get("bonus"),
                     },
                 }
             except Exception:

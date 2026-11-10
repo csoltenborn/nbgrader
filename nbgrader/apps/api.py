@@ -248,9 +248,51 @@ class NbGraderAPI(LoggingConfigurable):
                 "course_id": response.get("course_id", course_id),
                 "counted_assignments": response.get("counted_assignments", []),
                 "total_max_points": response.get("total_max_points", 0.0),
+                "bonus_scheme": response.get("bonus_scheme"),
                 "students": response.get("students", []),
             }
         }
+
+    def get_bonus_scheme(self):
+        """Get the bonus scheme of the current course."""
+        course_id = self._effective_course_id()
+        if not self.exchange_is_functional or not course_id:
+            return {"success": False, "error": "Exchange is not functional."}
+        lister = self.exchange.List(
+            coursedir=self.coursedir,
+            authenticator=self.authenticator,
+            parent=self)
+        if not hasattr(lister, "get_bonus_scheme"):
+            return {
+                "success": False,
+                "error": "Exchange does not support bonus schemes."
+            }
+        scheme = lister.get_bonus_scheme(course_id)
+        if scheme is None:
+            return {"success": False, "error": f"Failed to load bonus scheme for '{course_id}'."}
+        return {"success": True, "value": scheme}
+
+    def set_bonus_scheme(self, scheme):
+        """Store the bonus scheme of the current course."""
+        course_id = self._effective_course_id()
+        if not self.exchange_is_functional or not course_id:
+            return {"success": False, "error": "Exchange is not functional."}
+        lister = self.exchange.List(
+            coursedir=self.coursedir,
+            authenticator=self.authenticator,
+            parent=self)
+        if not hasattr(lister, "set_bonus_scheme"):
+            return {
+                "success": False,
+                "error": "Exchange does not support bonus schemes."
+            }
+        res = lister.set_bonus_scheme(course_id, scheme)
+        if not res or not res.get("success"):
+            return {
+                "success": False,
+                "error": (res or {}).get("message", "Failed to save bonus scheme.")
+            }
+        return {"success": True, "value": res.get("bonus_scheme")}
 
     def get_submitted_students(self, assignment_id):
         """Get the ids of students that have submitted a given assignment

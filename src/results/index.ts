@@ -11,6 +11,18 @@ export interface IAssignmentResult {
   submitted?: boolean;
 }
 
+export interface IBonusEntry {
+  threshold: number;
+  bonus: number;
+}
+
+export interface IBonusInfo {
+  scheme_type: 'percentage' | 'absolute';
+  visibility: 'full' | 'thresholds';
+  entries: IBonusEntry[];
+  bonus_points: number | null;
+}
+
 export interface IStudentResultsPayload {
   course_id: string;
   student_id: string;
@@ -18,6 +30,7 @@ export interface IStudentResultsPayload {
   total_points: number;
   total_max_points: number;
   percentage: number;
+  bonus?: IBonusInfo | null;
 }
 
 interface IApiResponse<T> {
@@ -76,6 +89,11 @@ export class ResultsWidget extends Widget {
   private footerPointsEl: HTMLElement;
   private footerMaxPointsEl: HTMLElement;
   private footerPercentageEl: HTMLElement;
+  private bonusPanelEl: HTMLDivElement;
+  private bonusCurrentEl: HTMLDivElement;
+  private bonusPointsEl: HTMLElement;
+  private bonusThresholdHeaderEl: HTMLElement;
+  private bonusTableBodyEl: HTMLTableSectionElement;
   private boundDocumentClick: (event: MouseEvent) => void;
 
   constructor() {
@@ -122,6 +140,20 @@ export class ResultsWidget extends Widget {
       '        <div class="results-progress-track" aria-hidden="true">',
       '          <div id="results_progress_bar" class="results-progress-fill" style="width: 0%;"></div>',
       '        </div>',
+      '      </div>',
+      '    </div>',
+      '    <div id="results_bonus_panel" class="panel panel-default" hidden>',
+      '      <div class="panel-heading">Bonus</div>',
+      '      <div class="panel-body">',
+      '        <div id="results_bonus_current" class="results-metric" hidden>',
+      '          <span class="results-metric-label">Current bonus</span>',
+      '          <span class="results-metric-value" id="results_bonus_points">0</span>',
+      '        </div>',
+      '        <table class="results-table results-bonus-table">',
+      '          <thead><tr><th id="results_bonus_threshold_header">Threshold</th><th class="results-col-num">Bonus points</th></tr></thead>',
+      '          <tbody id="results_bonus_table_body"></tbody>',
+      '        </table>',
+      '        <div class="results-bonus-note">Bonus is calculated live from your current results and may change until the end of the class.</div>',
       '      </div>',
       '    </div>',
       '    <div id="results_assignments_panel" class="panel panel-default">',
@@ -201,6 +233,21 @@ export class ResultsWidget extends Widget {
     this.footerPercentageEl = this.node.querySelector(
       '#results_footer_percentage'
     ) as HTMLElement;
+    this.bonusPanelEl = this.node.querySelector(
+      '#results_bonus_panel'
+    ) as HTMLDivElement;
+    this.bonusCurrentEl = this.node.querySelector(
+      '#results_bonus_current'
+    ) as HTMLDivElement;
+    this.bonusPointsEl = this.node.querySelector(
+      '#results_bonus_points'
+    ) as HTMLElement;
+    this.bonusThresholdHeaderEl = this.node.querySelector(
+      '#results_bonus_threshold_header'
+    ) as HTMLElement;
+    this.bonusTableBodyEl = this.node.querySelector(
+      '#results_bonus_table_body'
+    ) as HTMLTableSectionElement;
 
     this.courseDropdownBtn.addEventListener('click', () => {
       this.courseListEl.classList.toggle('open');
@@ -350,6 +397,7 @@ export class ResultsWidget extends Widget {
       payload.total_max_points ?? 0,
       payload.percentage ?? 0
     );
+    this.renderBonus(payload.bonus);
 
     this.tableBodyEl.innerHTML = '';
     if (assignments.length === 0) {
@@ -402,11 +450,61 @@ export class ResultsWidget extends Widget {
     this.tableEl.hidden = false;
   }
 
+  private renderBonus(bonus?: IBonusInfo | null): void {
+    if (!bonus || !bonus.entries || bonus.entries.length === 0) {
+      this.bonusPanelEl.hidden = true;
+      return;
+    }
+
+    this.bonusPanelEl.hidden = false;
+    this.bonusThresholdHeaderEl.textContent =
+      bonus.scheme_type === 'percentage'
+        ? 'Percentage achieved'
+        : 'Points achieved';
+
+    if (bonus.visibility === 'full' && bonus.bonus_points !== null) {
+      this.bonusPointsEl.textContent = String(bonus.bonus_points);
+      this.bonusCurrentEl.hidden = false;
+    } else {
+      this.bonusCurrentEl.hidden = true;
+    }
+
+    this.bonusTableBodyEl.innerHTML = '';
+    const unit = bonus.scheme_type === 'percentage' ? '%' : ' points';
+    let activeHighlighted = false;
+
+    bonus.entries.forEach(e => {
+      const tr = document.createElement('tr');
+
+      const threshTd = document.createElement('td');
+      threshTd.textContent = `≥ ${formatScore(e.threshold)}${unit}`;
+
+      const bonusTd = document.createElement('td');
+      bonusTd.className = 'results-col-num';
+      bonusTd.textContent = String(e.bonus);
+
+      if (
+        bonus.visibility === 'full' &&
+        bonus.bonus_points !== null &&
+        !activeHighlighted &&
+        e.bonus === bonus.bonus_points
+      ) {
+        tr.classList.add('results-bonus-row-active');
+        activeHighlighted = true;
+      }
+
+      tr.appendChild(threshTd);
+      tr.appendChild(bonusTd);
+      this.bonusTableBodyEl.appendChild(tr);
+    });
+  }
+
   private setLoadingState(): void {
     this.loadingEl.hidden = false;
     this.placeholderEl.hidden = true;
     this.errorEl.hidden = true;
     this.tableEl.hidden = true;
+    this.bonusPanelEl.hidden = true;
   }
 
   private showPlaceholder(): void {
@@ -414,12 +512,14 @@ export class ResultsWidget extends Widget {
     this.placeholderEl.hidden = false;
     this.errorEl.hidden = true;
     this.tableEl.hidden = true;
+    this.bonusPanelEl.hidden = true;
   }
 
   private showError(message: string): void {
     this.loadingEl.hidden = true;
     this.placeholderEl.hidden = true;
     this.tableEl.hidden = true;
+    this.bonusPanelEl.hidden = true;
     this.errorEl.innerText = message;
     this.errorEl.hidden = false;
   }

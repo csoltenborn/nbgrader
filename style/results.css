@@ -146,4 +146,31 @@
   color: var(--jp-ui-font-color2, #666);
 }
 
+.results-table .results-col-actions {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.results-feedback-link {
+  color: var(--jp-brand-color1, #1976d2);
+  cursor: pointer;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.results-feedback-link:hover {
+  color: var(--jp-brand-color0, #1565c0);
+  text-decoration: underline;
+}
+
+.results-fetch-feedback-btn {
+  font-size: 11px;
+  padding: 1px 6px;
+}
+
+.results-no-feedback {
+  color: var(--jp-ui-font-color2, #888);
+}
+
+
 

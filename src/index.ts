@@ -232,7 +232,7 @@ const resultsExtension: JupyterFrontEndPlugin<void> = {
       execute: () => {
         const isNew = !widget || widget.isDisposed;
         if (isNew) {
-          const content = new ResultsWidget();
+          const content = new ResultsWidget(app);
           widget = new MainAreaWidget({ content });
           widget.id = 'nbgrader-results';
           widget.addClass('nbgrader-mainarea-widget');

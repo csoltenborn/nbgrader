@@ -151,9 +151,15 @@ var StudentUI = Backbone.View.extend({
 
         var body = $("<div/>");
         if (hasGrades) {
-            body.append($("<div/>")
-                .addClass("alert alert-warning")
-                .html("<strong>Warning:</strong> Student <code>" + student_id + "</code> has submissions and a recorded score of " + score + ".<br/><br/>Removing this student from the course will also delete their submissions and grades. Are you sure you want to proceed?"));
+            var warningAlert = $("<div/>").addClass("alert alert-warning");
+            warningAlert.append($("<strong/>").text("Warning:"));
+            warningAlert.append(document.createTextNode(" Student "));
+            warningAlert.append($("<code/>").text(student_id));
+            warningAlert.append(document.createTextNode(" has submissions and a recorded score of " + score + "."));
+            warningAlert.append($("<br/>"));
+            warningAlert.append($("<br/>"));
+            warningAlert.append(document.createTextNode("Removing this student from the course will also delete their submissions and grades. Are you sure you want to proceed?"));
+            body.append(warningAlert);
         } else {
             body.append($("<p/>").text("Are you sure you want to remove student '" + student_id + "' from this course?"));
         }

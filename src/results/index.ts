@@ -1,3 +1,4 @@
+import { JupyterFrontEnd } from '@jupyterlab/application';
 import { URLExt } from '@jupyterlab/coreutils';
 import { ServerConnection } from '@jupyterlab/services';
 import { Message } from '@lumino/messaging';
@@ -9,6 +10,9 @@ export interface IAssignmentResult {
   max_points: number;
   graded: boolean;
   submitted?: boolean;
+  has_local_feedback?: boolean;
+  local_feedback_path?: string | null;
+  local_feedback_file?: string | null;
 }
 
 export interface IBonusEntry {
@@ -71,6 +75,7 @@ export function formatScore(value: number): string {
 }
 
 export class ResultsWidget extends Widget {
+  private app?: JupyterFrontEnd;
   private currentCourse: string | undefined = undefined;
   private isRefreshing = false;
   private courseDefaultBtn: HTMLButtonElement;
@@ -96,8 +101,9 @@ export class ResultsWidget extends Widget {
   private bonusTableBodyEl: HTMLTableSectionElement;
   private boundDocumentClick: (event: MouseEvent) => void;
 
-  constructor() {
+  constructor(app?: JupyterFrontEnd) {
     super();
+    this.app = app;
     this.addClass('nbgrader-results-content');
     this.node.style.overflowY = 'auto';
 
@@ -169,6 +175,7 @@ export class ResultsWidget extends Widget {
       '              <th class="results-col-status">Status</th>',
       '              <th class="results-col-num">Achieved Points</th>',
       '              <th class="results-col-num">Overall Points</th>',
+      '              <th class="results-col-actions">Feedback</th>',
       '            </tr>',
       '          </thead>',
       '          <tbody id="results_table_body"></tbody>',
@@ -178,6 +185,7 @@ export class ResultsWidget extends Widget {
       '              <td class="results-col-status"><strong id="results_footer_percentage">0%</strong></td>',
       '              <td class="results-col-num"><strong id="results_footer_points">0</strong></td>',
       '              <td class="results-col-num"><strong id="results_footer_max_points">0</strong></td>',
+      '              <td class="results-col-actions"></td>',
       '            </tr>',
       '          </tfoot>',
       '        </table>',
@@ -437,10 +445,86 @@ export class ResultsWidget extends Widget {
       maxTd.className = 'results-col-num results-assignment-max-points';
       maxTd.innerText = formatScore(item.max_points);
 
+      const feedbackTd = document.createElement('td');
+      feedbackTd.className = 'results-col-actions results-assignment-feedback';
+
+      if (item.has_local_feedback) {
+        const link = document.createElement('a');
+        link.href = '#';
+        link.className = 'results-feedback-link';
+        link.innerText = 'view feedback';
+        link.setAttribute('data-assignment-id', item.assignment_id);
+        link.onclick = (event: MouseEvent) => {
+          event.preventDefault();
+          const targetPath = item.local_feedback_file || item.local_feedback_path;
+          if (this.app && targetPath) {
+            void this.app.commands.execute('filebrowser:go-to-path', {
+              path: targetPath
+            });
+          } else if (targetPath) {
+            const settings = ServerConnection.makeSettings();
+            window.open(URLExt.join(settings.baseUrl, 'tree', targetPath), '_blank');
+          }
+        };
+        feedbackTd.appendChild(link);
+      } else if (item.graded) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-primary btn-xs results-fetch-feedback-btn';
+        btn.innerText = 'Fetch Feedback';
+        btn.setAttribute('data-assignment-id', item.assignment_id);
+        btn.onclick = async (event: MouseEvent) => {
+          event.preventDefault();
+          if (!this.currentCourse) {
+            return;
+          }
+          btn.setAttribute('disabled', 'disabled');
+          btn.innerText = 'Fetching Feedback...';
+          const dataToSend = {
+            course_id: this.currentCourse,
+            assignment_id: item.assignment_id
+          };
+          try {
+            const reply = await requestResultsAPI<IApiResponse<any>>(
+              'results/fetch_feedback',
+              {
+                body: JSON.stringify(dataToSend),
+                method: 'POST'
+              }
+            );
+            if (reply && reply.success === false) {
+              btn.removeAttribute('disabled');
+              btn.innerText = 'Fetch Feedback';
+              console.error(
+                `Failed to fetch feedback for ${item.assignment_id}: ${reply.value}`
+              );
+              alert(`Failed to fetch feedback: ${reply.value}`);
+            } else if (this.currentCourse) {
+              await this.loadCourseResults(this.currentCourse);
+            }
+          } catch (reason) {
+            btn.removeAttribute('disabled');
+            btn.innerText = 'Fetch Feedback';
+            console.error(
+              `Error on POST results/fetch_feedback ${JSON.stringify(dataToSend)}:`,
+              reason
+            );
+            alert(`Error fetching feedback: ${reason}`);
+          }
+        };
+        feedbackTd.appendChild(btn);
+      } else {
+        const emptySpan = document.createElement('span');
+        emptySpan.className = 'results-no-feedback text-muted';
+        emptySpan.innerText = '—';
+        feedbackTd.appendChild(emptySpan);
+      }
+
       tr.appendChild(nameTd);
       tr.appendChild(statusTd);
       tr.appendChild(ptsTd);
       tr.appendChild(maxTd);
+      tr.appendChild(feedbackTd);
       this.tableBodyEl.appendChild(tr);
     });
 

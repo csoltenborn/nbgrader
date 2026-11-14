@@ -127,85 +127,10 @@ var StudentUI = Backbone.View.extend({
         // edit metadata
         this.$edit.append($("<a/>")
             .attr("href", "#")
-            .attr("title", "Edit student")
             .click(_.bind(this.openModal, this))
             .append($("<span/>")
                 .addClass("glyphicon glyphicon-pencil")
                 .attr("aria-hidden", "true")));
-
-        this.$edit.append("&nbsp;&nbsp;");
-        this.$edit.append($("<a/>")
-            .attr("href", "#")
-            .attr("title", "Remove student")
-            .click(_.bind(this.deleteModal, this))
-            .append($("<span/>")
-                .addClass("glyphicon glyphicon-trash text-danger")
-                .attr("aria-hidden", "true")));
-    },
-
-    deleteModal: function () {
-        var that = this;
-        var student_id = this.model.get("id");
-        var score = this.model.get("score") || 0;
-        var hasGrades = score > 0;
-
-        var body = $("<div/>");
-        if (hasGrades) {
-            var warningAlert = $("<div/>").addClass("alert alert-warning");
-            warningAlert.append($("<strong/>").text("Warning:"));
-            warningAlert.append(document.createTextNode(" Student "));
-            warningAlert.append($("<code/>").text(student_id));
-            warningAlert.append(document.createTextNode(" has submissions and a recorded score of " + score + "."));
-            warningAlert.append($("<br/>"));
-            warningAlert.append($("<br/>"));
-            warningAlert.append(document.createTextNode("Removing this student from the course will also delete their submissions and grades. Are you sure you want to proceed?"));
-            body.append(warningAlert);
-        } else {
-            body.append($("<p/>").text("Are you sure you want to remove student '" + student_id + "' from this course?"));
-        }
-
-        var footer = $("<div/>");
-        var btnConfirm = $("<button/>")
-            .addClass("btn btn-danger")
-            .attr("type", "button")
-            .text("Remove Student");
-        var btnCancel = $("<button/>")
-            .addClass("btn btn-default")
-            .attr("type", "button")
-            .attr("data-dismiss", "modal")
-            .text("Cancel");
-        footer.append(btnConfirm);
-        footer.append(btnCancel);
-
-        var modal = createModal("delete-student-modal", "Remove Student: " + student_id, body, footer);
-
-        btnConfirm.click(function () {
-            btnConfirm.text("Removing...").attr("disabled", "disabled");
-            var url = that.model.urlRoot + "/" + encodeURIComponent(student_id);
-            if (hasGrades) {
-                url += "?force=true";
-            }
-            $.ajax({
-                url: url,
-                type: "DELETE",
-                success: function () {
-                    modal.modal("hide");
-                    var tbl = $("#main-table").parent().DataTable();
-                    tbl.row(that.$el).remove().draw();
-                },
-                error: function (xhr) {
-                    btnConfirm.text("Remove Student").removeAttr("disabled");
-                    var msg = "Failed to remove student.";
-                    try {
-                        var parsed = JSON.parse(xhr.responseText);
-                        if (parsed.message) msg = parsed.message;
-                    } catch (e) {
-                        if (xhr.statusText) msg = xhr.statusText;
-                    }
-                    alert("Error: " + msg);
-                }
-            });
-        });
     },
 
     save: function () {
@@ -222,17 +147,6 @@ var StudentUI = Backbone.View.extend({
             "first_name": first_name,
             "last_name": last_name,
             "email": email
-        }, {
-            error: function (m, xhr) {
-                var msg = "Failed to update student.";
-                try {
-                    var parsed = JSON.parse(xhr.responseText);
-                    if (parsed.message) msg = parsed.message;
-                } catch (e) {
-                    if (xhr.statusText) msg = xhr.statusText;
-                }
-                alert("Error: " + msg);
-            }
         });
     },
 
@@ -301,23 +215,10 @@ var createStudentModal = function () {
             "el": row
         });
         views.push(view);
-        model.save(null, {
-            success: function () {
-                tbl.parent().DataTable().row.add(row).draw();
-                modal.modal('hide');
-            },
-            error: function (m, xhr) {
-                row.remove();
-                var msg = "Failed to create student.";
-                try {
-                    var parsed = JSON.parse(xhr.responseText);
-                    if (parsed.message) msg = parsed.message;
-                } catch (e) {
-                    if (xhr.statusText) msg = xhr.statusText;
-                }
-                alert("Error: " + msg);
-            }
-        });
+        model.save();
+        tbl.parent().DataTable().row.add(row).draw();
+
+        modal.modal('hide');
     };
 
     var body = $("<table/>").addClass("table table-striped form-table");

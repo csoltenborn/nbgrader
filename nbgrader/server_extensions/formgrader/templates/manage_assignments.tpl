@@ -17,7 +17,6 @@ Manage Assignments
 <li role="presentation" class="active"><a href="{{ base_url }}/formgrader/manage_assignments">Manage Assignments</a></li>
 <li role="presentation"><a href="{{ base_url }}/formgrader/gradebook">Manual Grading</a></li>
 <li role="presentation"><a href="{{ base_url }}/formgrader/manage_students">Manage Students</a></li>
-<li role="presentation"><a href="{{ base_url }}/formgrader/bonus_results">Bonus Results</a></li>
 {%- endblock -%}
 
 {%- block breadcrumbs -%}
@@ -52,7 +51,6 @@ Manage Assignments
           <li><i>(JupyterHub only)</i> To <b>collect</b> assignments, click the collect button.</li>
           <li>To <b>autograde</b> submissions, click on the number of collected submissions. You must run
           the autograder on the submissions before you can manually grade them.</li>
-          <li>To include an assignment in the students' <b>Results</b> point evaluation, check its <b>Bonus eligible</b> checkbox.</li>
         </ol>
       </div>
     </div>
@@ -102,26 +100,24 @@ for instructions.
   <th>Name</th>
   <th class="text-center">Due Date</th>
   <th class="text-center">Status</th>
-  <th class="text-center no-sort">Bonus eligible</th>
   <th class="text-center no-sort">Edit</th>
   <th class="text-center no-sort">Generate</th>
   <th class="text-center no-sort">Preview</th>
   <th class="text-center no-sort">Release</th>
   <th class="text-center no-sort">Collect</th>
   <th class="text-center"># Submissions</th>
-  <th class="text-center no-sort">Autograde</th>
   <th class="text-center no-sort">Generate Feedback</th>
   <th class="text-center no-sort">Release Feedback</th>
 </tr>
 {%- endblock -%}
 
 {%- block table_body -%}
-<tr><td colspan="13">Loading, please wait...</td></tr>
+<tr><td colspan="11">Loading, please wait...</td></tr>
 {%- endblock -%}
 
 {%- block table_footer -%}
 <tr>
-  <td colspan="13">
+  <td colspan="11">
     <span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
     <a href="#" onClick="createAssignmentModal();">Add new assignment...</a>
   </td>

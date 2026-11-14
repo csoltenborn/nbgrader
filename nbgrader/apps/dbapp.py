@@ -41,36 +41,13 @@ class DbBaseApp(NbGrader):
         super(DbBaseApp, self).start()
 
 
-student_add_flags = {}
-student_add_flags.update(flags)
-student_add_flags.update({
-    'force': (
-        {'DbStudentAddApp': {'force': True}},
-        "Confirm operation without prompt."
-    ),
-    'f': (
-        {'DbStudentAddApp': {'force': True}},
-        "Confirm operation without prompt."
-    ),
-    'yes': (
-        {'DbStudentAddApp': {'force': True}},
-        "Confirm operation without prompt."
-    ),
-    'y': (
-        {'DbStudentAddApp': {'force': True}},
-        "Confirm operation without prompt."
-    ),
-})
-
 class DbStudentAddApp(DbBaseApp):
 
     name = u'nbgrader-db-student-add'
     description = u'Add a student to the nbgrader database'
 
     aliases = student_add_aliases
-    flags = student_add_flags
-
-    force = Bool(False, help="Confirm operation without prompt.").tag(config=True)
+    flags = flags
 
     last_name = Unicode(
         None,
@@ -100,20 +77,6 @@ class DbStudentAddApp(DbBaseApp):
     def start(self):
         super(DbStudentAddApp, self).start()
 
-        if (os.environ.get("JUPYTERHUB_USER") or os.environ.get("HELM_NAMESPACE")) and not os.environ.get("NGSHARE_MANAGED_ROSTER"):
-            self.log.warning(
-                "WARNING: 'nbgrader db student add' only alters the local gradebook database "
-                "and does NOT update ngshare. If students should be able to fetch/submit assignments, "
-                "use the Formgrader web interface or 'ngshare-course-management add_student' instead."
-            )
-            if not self.force:
-                try:
-                    answer = input("Are you sure you want to continue modifying only local storage? [y/N]: ").strip().lower()
-                except (EOFError, KeyboardInterrupt):
-                    answer = "no"
-                if answer not in ("y", "yes"):
-                    self.fail("Aborted by user.")
-
         if len(self.extra_args) != 1:
             self.fail("No student id provided.")
 
@@ -140,14 +103,6 @@ student_remove_flags.update({
         {'DbStudentRemoveApp': {'force': True}},
         "Complete the operation, even if it means grades will be deleted."
     ),
-    'yes': (
-        {'DbStudentRemoveApp': {'force': True}},
-        "Complete the operation, even if it means grades will be deleted."
-    ),
-    'y': (
-        {'DbStudentRemoveApp': {'force': True}},
-        "Complete the operation, even if it means grades will be deleted."
-    ),
 })
 
 class DbStudentRemoveApp(DbBaseApp):
@@ -162,20 +117,6 @@ class DbStudentRemoveApp(DbBaseApp):
 
     def start(self):
         super(DbStudentRemoveApp, self).start()
-
-        if (os.environ.get("JUPYTERHUB_USER") or os.environ.get("HELM_NAMESPACE")) and not os.environ.get("NGSHARE_MANAGED_ROSTER"):
-            self.log.warning(
-                "WARNING: 'nbgrader db student remove' only alters the local gradebook database "
-                "and does NOT remove the student from ngshare. Use the Formgrader web interface or "
-                "'ngshare-course-management remove_students' to keep ngshare synchronized."
-            )
-            if not self.force:
-                try:
-                    answer = input("Are you sure you want to continue modifying only local storage? [y/N]: ").strip().lower()
-                except (EOFError, KeyboardInterrupt):
-                    answer = "no"
-                if answer not in ("y", "yes"):
-                    self.fail("Aborted by user.")
 
         if len(self.extra_args) != 1:
             self.fail("No student id provided.")

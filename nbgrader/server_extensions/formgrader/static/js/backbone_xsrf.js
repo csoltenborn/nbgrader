@@ -14,10 +14,7 @@ Backbone.sync = function(method, model, options) {
 };
 
 $.ajaxPrefilter(function(options, originalOptions, jqXHR){
-    if (!options.crossDomain) {
-        var xsrf = getCookie("_xsrf");
-        if (xsrf !== undefined) {
-            jqXHR.setRequestHeader('X-CSRFToken', xsrf);
-        }
+    if (options['type'].toLowerCase() === "post") {
+        jqXHR.setRequestHeader('X-CSRFToken', getCookie("_xsrf"));
     }
 });

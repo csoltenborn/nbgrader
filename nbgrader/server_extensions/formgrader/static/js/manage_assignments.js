@@ -30,14 +30,12 @@ var AssignmentUI = Backbone.View.extend({
         this.$name = this.$el.find(".name");
         this.$duedate = this.$el.find(".duedate");
         this.$status = this.$el.find(".status");
-        this.$counted = this.$el.find(".counted");
         this.$edit = this.$el.find(".edit");
         this.$assign = this.$el.find(".assign");
         this.$preview = this.$el.find(".preview");
         this.$release = this.$el.find(".release");
         this.$collect = this.$el.find(".collect");
         this.$num_submissions = this.$el.find(".num-submissions");
-        this.$autograde = this.$el.find(".autograde");
         this.$generate_feedback = this.$el.find(".generate-feedback");
         this.$release_feedback = this.$el.find(".release-feedback");
 
@@ -102,14 +100,12 @@ var AssignmentUI = Backbone.View.extend({
         this.$name.empty();
         this.$duedate.empty();
         this.$status.empty();
-        this.$counted.empty();
         this.$edit.empty();
         this.$assign.empty();
         this.$preview.empty();
         this.$release.empty();
         this.$collect.empty();
         this.$num_submissions.empty();
-        this.$autograde.empty();
         this.$generate_feedback.empty();
         this.$release_feedback.empty();
     },
@@ -145,19 +141,6 @@ var AssignmentUI = Backbone.View.extend({
             this.$status.attr("data-order", "released");
             this.$status.append($("<span/>").addClass("label label-success").text("released"));
         }
-
-        // counted in student results
-        var counted_checkbox = $("<input/>")
-            .attr("type", "checkbox")
-            .addClass("counted-checkbox")
-            .attr("aria-label", "Count assignment '" + name + "' in student results")
-            .prop("checked", Boolean(this.model.get("counted")));
-        if (!this.model.get("releaseable")) {
-            counted_checkbox.prop("disabled", true);
-        } else {
-            counted_checkbox.on("change", _.bind(this.toggle_counted, this));
-        }
-        this.$counted.append(counted_checkbox);
 
         // edit metadata
         this.$edit.append($("<a/>")
@@ -241,18 +224,6 @@ var AssignmentUI = Backbone.View.extend({
             );
         }
 
-        // autograde
-        if (num_submissions > 0) {
-            this.$autograde.append($("<a/>")
-                .attr("href", "#")
-                .click(_.bind(this.autograde, this))
-                .append($("<span/>")
-                    .addClass("glyphicon glyphicon-flash")
-                    .attr("aria-hidden", "true")
-                )
-            );
-        }
-
         // generate feedback
         if (num_submissions > 0) {
             this.$generate_feedback.append($("<a/>")
@@ -277,31 +248,6 @@ var AssignmentUI = Backbone.View.extend({
             );
         }
 
-    },
-
-    toggle_counted: function (event) {
-        var checkbox = $(event.currentTarget);
-        var counted = checkbox.is(":checked");
-        var name = this.model.get("name");
-        checkbox.prop("disabled", true);
-        $.ajax({
-            url: base_url + "/formgrader/api/assignment/" + encodeURIComponent(name) + "/counted",
-            type: "POST",
-            contentType: "application/json",
-            data: JSON.stringify({"counted": counted}),
-            dataType: "json"
-        }).done(_.bind(function () {
-            this.model.set("counted", counted, {silent: true});
-            checkbox.prop("disabled", false);
-        }, this)).fail(_.bind(function () {
-            checkbox.prop("checked", !counted);
-            checkbox.prop("disabled", false);
-            createModal(
-                "error-modal",
-                "Error",
-                "There was an error updating the counted setting of '" + name + "'."
-            );
-        }, this));
     },
 
     assign: function () {
@@ -464,42 +410,6 @@ var AssignmentUI = Backbone.View.extend({
         }
     },
 
-    autograde: function () {
-        this.clear();
-        this.$name.text("Please wait...");
-        $.post(base_url + "/formgrader/api/assignment/" + this.model.get("name") + "/autograde")
-            .done(_.bind(this.autograde_success, this))
-            .fail(_.bind(this.autograde_failure, this));
-    },
-
-    autograde_success: function (response) {
-        this.model.fetch();
-        response = JSON.parse(response);
-        if (response["success"]) {
-            createLogModal(
-                "success-modal",
-                "Success",
-                "Successfully autograded submissions of '" + this.model.get("name") + "'.",
-                response["log"]);
-
-        } else {
-            createLogModal(
-                "error-modal",
-                "Error",
-                "There was an error autograding '" + this.model.get("name") + "':",
-                response["log"],
-                response["error"]);
-        }
-    },
-
-    autograde_failure: function () {
-        this.model.fetch();
-        createModal(
-            "error-modal",
-            "Error",
-            "There was an error autograding submissions of '" + this.model.get("name") + "'.");
-    },
-
     generate_feedback: function () {
         this.clear();
         this.$name.text("Please wait...");
@@ -590,14 +500,12 @@ var insertRow = function (table) {
     row.append($("<td/>").addClass("name"));
     row.append($("<td/>").addClass("text-center duedate"));
     row.append($("<td/>").addClass("text-center status"));
-    row.append($("<td/>").addClass("text-center counted"));
     row.append($("<td/>").addClass("text-center edit"));
     row.append($("<td/>").addClass("text-center assign"));
     row.append($("<td/>").addClass("text-center preview"));
     row.append($("<td/>").addClass("text-center release"));
     row.append($("<td/>").addClass("text-center collect"));
     row.append($("<td/>").addClass("text-center num-submissions"));
-    row.append($("<td/>").addClass("text-center autograde"));
     row.append($("<td/>").addClass("text-center generate-feedback"));
     row.append($("<td/>").addClass("text-center release-feedback"));
     table.append(row)

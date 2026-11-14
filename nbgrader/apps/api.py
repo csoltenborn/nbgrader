@@ -178,122 +178,6 @@ class NbGraderAPI(LoggingConfigurable):
 
         return released
 
-    def _effective_course_id(self):
-        if self.course_id and self.course_id != '*':
-            return self.course_id
-        return os.environ.get('NBGRADER_SELECTED_COURSE', '').strip()
-
-    def get_counted_assignments(self):
-        """Get the names of assignments marked as counted toward point evaluation."""
-        course_id = self._effective_course_id()
-        if not self.exchange_is_functional or not course_id:
-            return set([])
-
-        lister = self.exchange.List(
-            coursedir=self.coursedir,
-            authenticator=self.authenticator,
-            parent=self)
-        if not hasattr(lister, "get_counted_assignments"):
-            return set([])
-
-        counted = lister.get_counted_assignments(course_id)
-        if counted is None:
-            return set([])
-        return set(counted)
-
-    def set_assignment_counted(self, assignment_id, counted):
-        """Mark or unmark an assignment as counted toward point evaluation."""
-        course_id = self._effective_course_id()
-        if not self.exchange_is_functional or not course_id:
-            return {"success": False, "error": "Exchange is not functional."}
-
-        lister = self.exchange.List(
-            coursedir=self.coursedir,
-            authenticator=self.authenticator,
-            parent=self)
-        if not hasattr(lister, "set_assignment_counted"):
-            return {
-                "success": False,
-                "error": "Exchange does not support counted assignments."
-            }
-
-        ok = lister.set_assignment_counted(course_id, assignment_id, bool(counted))
-        return {"success": bool(ok), "counted": bool(counted)}
-
-    def get_course_results(self):
-        """Get the course-wide bonus results overview."""
-        course_id = self._effective_course_id()
-        if not self.exchange_is_functional or not course_id:
-            return {"success": False, "error": "Exchange is not functional."}
-        lister = self.exchange.List(
-            coursedir=self.coursedir,
-            authenticator=self.authenticator,
-            parent=self)
-        if not hasattr(lister, "get_course_results"):
-            return {
-                "success": False,
-                "error": "Exchange does not support course results."
-            }
-        response = lister.get_course_results(course_id)
-        if response is None or not response.get("success", False):
-            msg = (
-                response.get("message")
-                if isinstance(response, dict) and response.get("message")
-                else f"Failed to load course results for '{course_id}'."
-            )
-            return {"success": False, "error": msg}
-        return {
-            "success": True,
-            "value": {
-                "course_id": response.get("course_id", course_id),
-                "counted_assignments": response.get("counted_assignments", []),
-                "total_max_points": response.get("total_max_points", 0.0),
-                "bonus_scheme": response.get("bonus_scheme"),
-                "students": response.get("students", []),
-            }
-        }
-
-    def get_bonus_scheme(self):
-        """Get the bonus scheme of the current course."""
-        course_id = self._effective_course_id()
-        if not self.exchange_is_functional or not course_id:
-            return {"success": False, "error": "Exchange is not functional."}
-        lister = self.exchange.List(
-            coursedir=self.coursedir,
-            authenticator=self.authenticator,
-            parent=self)
-        if not hasattr(lister, "get_bonus_scheme"):
-            return {
-                "success": False,
-                "error": "Exchange does not support bonus schemes."
-            }
-        scheme = lister.get_bonus_scheme(course_id)
-        if scheme is None:
-            return {"success": False, "error": f"Failed to load bonus scheme for '{course_id}'."}
-        return {"success": True, "value": scheme}
-
-    def set_bonus_scheme(self, scheme):
-        """Store the bonus scheme of the current course."""
-        course_id = self._effective_course_id()
-        if not self.exchange_is_functional or not course_id:
-            return {"success": False, "error": "Exchange is not functional."}
-        lister = self.exchange.List(
-            coursedir=self.coursedir,
-            authenticator=self.authenticator,
-            parent=self)
-        if not hasattr(lister, "set_bonus_scheme"):
-            return {
-                "success": False,
-                "error": "Exchange does not support bonus schemes."
-            }
-        res = lister.set_bonus_scheme(course_id, scheme)
-        if not res or not res.get("success"):
-            return {
-                "success": False,
-                "error": (res or {}).get("message", "Failed to save bonus scheme.")
-            }
-        return {"success": True, "value": res.get("bonus_scheme")}
-
     def get_submitted_students(self, assignment_id):
         """Get the ids of students that have submitted a given assignment
         (determined by whether or not a submission exists in the `submitted`
@@ -410,7 +294,7 @@ class NbGraderAPI(LoggingConfigurable):
 
         return students
 
-    def get_assignment(self, assignment_id, released=None, counted=None):
+    def get_assignment(self, assignment_id, released=None):
         """Get information about an assignment given its name.
 
         Arguments
@@ -420,9 +304,6 @@ class NbGraderAPI(LoggingConfigurable):
         released: list
             (Optional) A set of names of released assignments, obtained via
             self.get_released_assignments().
-        counted: set
-            (Optional) A set of names of counted assignments, obtained via
-            self.get_counted_assignments().
 
         Returns
         -------
@@ -431,10 +312,8 @@ class NbGraderAPI(LoggingConfigurable):
 
         """
         # get the set of released assignments if not given
-        if released is None:
+        if not released:
             released = self.get_released_assignments()
-        if counted is None:
-            counted = self.get_counted_assignments()
 
         # check whether there is a source version of the assignment
         sourcedir = os.path.abspath(self.coursedir.format_path(
@@ -506,7 +385,6 @@ class NbGraderAPI(LoggingConfigurable):
 
         # number of submissions
         assignment["num_submissions"] = len(self.get_submitted_students(assignment_id))
-        assignment["counted"] = assignment_id in counted
 
         return assignment
 
@@ -520,11 +398,10 @@ class NbGraderAPI(LoggingConfigurable):
 
         """
         released = self.get_released_assignments()
-        counted = self.get_counted_assignments()
 
         assignments = []
         for x in self.get_source_assignments():
-            assignments.append(self.get_assignment(x, released=released, counted=counted))
+            assignments.append(self.get_assignment(x, released=released))
 
         assignments.sort(key=lambda x: (x["duedate"] if x["duedate"] is not None else "None", x["name"]))
         return assignments
@@ -892,32 +769,6 @@ class NbGraderAPI(LoggingConfigurable):
 
         return student
 
-    def _sync_students_from_exchange(self):
-        """Synchronize remote course roster from exchange into local gradebook."""
-        course_id = self._effective_course_id()
-        if not self.exchange_is_functional or not course_id:
-            return
-        try:
-            lister = self.exchange.List(
-                coursedir=self.coursedir,
-                authenticator=self.authenticator,
-                parent=self)
-            if hasattr(lister, "get_students"):
-                ng_students = lister.get_students(course_id)
-                if ng_students is not None:
-                    with self.gradebook as gb:
-                        for s in ng_students:
-                            s_id = s.get("username") or s.get("id") or s.get("student_id")
-                            if s_id:
-                                gb.update_or_create_student(
-                                    s_id,
-                                    first_name=s.get("first_name") or None,
-                                    last_name=s.get("last_name") or None,
-                                    email=s.get("email") or None,
-                                )
-        except Exception:
-            self.log.exception("Failed to sync students from exchange")
-
     def get_students(self):
         """Get a list containing information about all the students in class.
 
@@ -927,8 +778,6 @@ class NbGraderAPI(LoggingConfigurable):
             A list of dictionaries containing information about all the students
 
         """
-        self._sync_students_from_exchange()
-
         with self.gradebook as gb:
             in_db = set([x.id for x in gb.students])
             students = gb.student_dicts()
@@ -947,73 +796,6 @@ class NbGraderAPI(LoggingConfigurable):
 
         students.sort(key=lambda x: (x["last_name"] or "None", x["first_name"] or "None", x["id"]))
         return students
-
-    def save_student(self, student_id, first_name=None, last_name=None, email=None):
-        """Add or update a student in exchange and gradebook."""
-        course_id = self._effective_course_id()
-        if self.exchange_is_functional and course_id:
-            lister = self.exchange.List(
-                coursedir=self.coursedir,
-                authenticator=self.authenticator,
-                parent=self)
-            if hasattr(lister, "add_or_update_student"):
-                res = lister.add_or_update_student(
-                    course_id,
-                    student_id,
-                    first_name=first_name,
-                    last_name=last_name,
-                    email=email
-                )
-                if res is None or not res.get("success", False):
-                    msg = (res or {}).get("message", "Failed to update student in ngshare")
-                    code = (res or {}).get("status_code", 400)
-                    return {"success": False, "error": msg, "status_code": code}
-
-        with self.gradebook as gb:
-            gb.update_or_create_student(
-                student_id,
-                first_name=first_name,
-                last_name=last_name,
-                email=email
-            )
-        return {"success": True, "student": self.get_student(student_id)}
-
-    def remove_student(self, student_id, force=False):
-        """Remove a student from exchange and gradebook."""
-        with self.gradebook as gb:
-            student = None
-            try:
-                student = gb.find_student(student_id)
-            except Exception:
-                pass
-            if student and len(student.submissions) > 0 and not force:
-                return {
-                    "success": False,
-                    "error": f"Student '{student_id}' has existing submissions and grades. Force confirmation required.",
-                    "status_code": 409,
-                    "has_submissions": True,
-                }
-
-        course_id = self._effective_course_id()
-        if self.exchange_is_functional and course_id:
-            lister = self.exchange.List(
-                coursedir=self.coursedir,
-                authenticator=self.authenticator,
-                parent=self)
-            if hasattr(lister, "remove_student"):
-                res = lister.remove_student(course_id, student_id)
-                if res is None or not res.get("success", False):
-                    msg = (res or {}).get("message", "Failed to remove student from ngshare")
-                    code = (res or {}).get("status_code", 400)
-                    return {"success": False, "error": msg, "status_code": code}
-
-        with self.gradebook as gb:
-            try:
-                gb.remove_student(student_id)
-            except Exception:
-                pass
-
-        return {"success": True}
 
     def get_student_submissions(self, student_id):
         """Get information about all submissions from a particular student.
@@ -1227,7 +1009,7 @@ class NbGraderAPI(LoggingConfigurable):
                 app.update = update
                 return capture_log(app)
 
-    def autograde(self, assignment_id, student_id=None, force=True, create=True):
+    def autograde(self, assignment_id, student_id, force=True, create=True):
         """Run ``nbgrader autograde`` for a particular assignment and student.
 
         Arguments
@@ -1235,8 +1017,7 @@ class NbGraderAPI(LoggingConfigurable):
         assignment_id: string
             The name of the assignment
         student_id: string
-            The unique id of the student (optional). If not provided, then
-            autograde all submitted assignments.
+            The unique id of the student
         force: bool
             Whether to autograde the submission, even if it's already been
             autograded
@@ -1254,18 +1035,11 @@ class NbGraderAPI(LoggingConfigurable):
             - log (string): captured log output
 
         """
-        if student_id is not None:
-            with temp_attrs(self.coursedir, assignment_id=assignment_id, student_id=student_id):
-                app = Autograde(coursedir=self.coursedir, parent=self)
-                app.force = force
-                app.create_student = create
-                return capture_log(app)
-        else:
-            with temp_attrs(self.coursedir, assignment_id=assignment_id):
-                app = Autograde(coursedir=self.coursedir, parent=self)
-                app.force = force
-                app.create_student = create
-                return capture_log(app)
+        with temp_attrs(self.coursedir, assignment_id=assignment_id, student_id=student_id):
+            app = Autograde(coursedir=self.coursedir, parent=self)
+            app.force = force
+            app.create_student = create
+            return capture_log(app)
 
     def generate_feedback(self, assignment_id, student_id=None, force=True):
         """Run ``nbgrader generate_feedback`` for a particular assignment and student.

@@ -210,34 +210,15 @@ class StudentHandler(BaseApiHandler):
     @check_xsrf
     @check_notebook_dir
     def put(self, student_id):
-        data = self.get_json_body() or {}
+        data = self.get_json_body()
+        student = {
+            "last_name": data.get("last_name", None),
+            "first_name": data.get("first_name", None),
+            "email": data.get("email", None),
+        }
         student_id = student_id.strip()
-        result = self.api.save_student(
-            student_id,
-            first_name=data.get("first_name", None),
-            last_name=data.get("last_name", None),
-            email=data.get("email", None)
-        )
-        if not result.get("success"):
-            raise web.HTTPError(
-                result.get("status_code", 400),
-                result.get("error", "Failed to save student")
-            )
-        self.write(json.dumps(result.get("student")))
-
-    @web.authenticated
-    @check_xsrf
-    @check_notebook_dir
-    def delete(self, student_id):
-        student_id = student_id.strip()
-        force = self.get_argument("force", "false").lower() == "true"
-        result = self.api.remove_student(student_id, force=force)
-        if not result.get("success"):
-            raise web.HTTPError(
-                result.get("status_code", 400),
-                result.get("error", "Failed to remove student")
-            )
-        self.write(json.dumps({"success": True}))
+        self.gradebook.update_or_create_student(student_id, **student)
+        self.write(json.dumps(self.api.get_student(student_id)))
 
 
 class StudentSubmissionCollectionHandler(BaseApiHandler):
@@ -290,14 +271,6 @@ class CollectHandler(BaseApiHandler):
         self.write(json.dumps(self.api.collect(assignment_id)))
 
 
-class AutogradeAssignmentHandler(BaseApiHandler):
-    @web.authenticated
-    @check_xsrf
-    @check_notebook_dir
-    def post(self, assignment_id):
-        self.write(json.dumps(self.api.autograde(assignment_id)))
-
-
 class AutogradeHandler(BaseApiHandler):
     @web.authenticated
     @check_xsrf
@@ -338,55 +311,15 @@ class ReleaseFeedbackHandler(BaseApiHandler):
         self.write(json.dumps(self.api.release_feedback(assignment_id, student_id)))
 
 
-class CountedAssignmentHandler(BaseApiHandler):
-    @web.authenticated
-    @check_xsrf
-    @check_notebook_dir
-    def post(self, assignment_id):
-        data = self.get_json_body() or {}
-        counted = bool(data.get("counted", False))
-        result = self.api.set_assignment_counted(assignment_id, counted)
-        if not result.get("success"):
-            raise web.HTTPError(500, result.get("error", "Failed to update counted state"))
-        self.write(json.dumps(result))
-
-
-class BonusResultsCollectionHandler(BaseApiHandler):
-    @web.authenticated
-    @check_xsrf
-    @check_notebook_dir
-    def get(self):
-        self.write(json.dumps(self.api.get_course_results()))
-
-
-class BonusSchemeHandler(BaseApiHandler):
-    @web.authenticated
-    @check_xsrf
-    @check_notebook_dir
-    def get(self):
-        self.write(json.dumps(self.api.get_bonus_scheme()))
-
-    @web.authenticated
-    @check_xsrf
-    @check_notebook_dir
-    def put(self):
-        data = self.get_json_body() or {}
-        self.write(json.dumps(self.api.set_bonus_scheme(data)))
-
-
 default_handlers = [
     (r"/formgrader/api/status", StatusHandler),
-    (r"/formgrader/api/bonus_results", BonusResultsCollectionHandler),
-    (r"/formgrader/api/bonus_scheme", BonusSchemeHandler),
 
     (r"/formgrader/api/assignments", AssignmentCollectionHandler),
     (r"/formgrader/api/assignment/([^/]+)", AssignmentHandler),
-    (r"/formgrader/api/assignment/([^/]+)/counted", CountedAssignmentHandler),
     (r"/formgrader/api/assignment/([^/]+)/assign", AssignHandler),
     (r"/formgrader/api/assignment/([^/]+)/unrelease", UnReleaseHandler),
     (r"/formgrader/api/assignment/([^/]+)/release", ReleaseHandler),
     (r"/formgrader/api/assignment/([^/]+)/collect", CollectHandler),
-    (r"/formgrader/api/assignment/([^/]+)/autograde", AutogradeAssignmentHandler),
     (r"/formgrader/api/assignment/([^/]+)/generate_feedback", GenerateAllFeedbackHandler),
     (r"/formgrader/api/assignment/([^/]+)/release_feedback", ReleaseAllFeedbackHandler),
     (r"/formgrader/api/assignment/([^/]+)/([^/]+)/generate_feedback", GenerateFeedbackHandler),

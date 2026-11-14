@@ -362,21 +362,6 @@ class NbGraderVersionHandler(BaseAssignmentHandler):
         self.finish(json.dumps(result))
 
 
-class NbGraderContextHandler(BaseAssignmentHandler):
-
-    @web.authenticated
-    def get(self):
-        course_id = os.environ.get("NBGRADER_SELECTED_COURSE", "").strip()
-        role = (
-            os.environ.get("NBGRADER_SELECTED_ROLE", "").strip()
-            or ("instructor" if os.environ.get("NBGRADER_ENABLE_INSTRUCTOR_UI") == "1" else "student")
-        )
-        self.finish(json.dumps({
-            "course_id": course_id,
-            "role": role,
-        }))
-
-
 #-----------------------------------------------------------------------------
 # URL to handler mappings
 #-----------------------------------------------------------------------------
@@ -388,8 +373,7 @@ default_handlers = [
     (r"/assignments", AssignmentListHandler),
     (r"/assignments/%s" % _assignment_action_regex, AssignmentActionHandler),
     (r"/courses", CourseListHandler),
-    (r"/nbgrader_version", NbGraderVersionHandler),
-    (r"/nbgrader_context", NbGraderContextHandler),
+    (r"/nbgrader_version", NbGraderVersionHandler)
 ]
 
 

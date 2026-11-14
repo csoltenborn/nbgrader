@@ -304,17 +304,6 @@ class ManageStudentNotebookSubmissionsHandler(BaseHandler):
         self.write(html)
 
 
-class BonusResultsHandler(BaseHandler):
-    @web.authenticated
-    @check_xsrf
-    @check_notebook_dir
-    def get(self):
-        html = self.render(
-            "bonus_results.tpl",
-            base_url=self.base_url)
-        self.write(html)
-
-
 class Template404(BaseHandler):
     """Render our 404 template"""
     def prepare(self):
@@ -341,7 +330,6 @@ default_handlers = [
     (r"/formgrader/manage_students/?", ManageStudentsHandler),
     (r"/formgrader/manage_students/([^/]+)/?", ManageStudentsAssignmentsHandler),
     (r"/formgrader/manage_students/([^/]+)/([^/]+)/?", ManageStudentNotebookSubmissionsHandler),
-    (r"/formgrader/bonus_results/?", BonusResultsHandler),
 
     (r"/formgrader/submissions/components/(.*)", web.StaticFileHandler, {'path': components_path}),
     (r"/formgrader/submissions/([^/]+)/?", SubmissionHandler),
